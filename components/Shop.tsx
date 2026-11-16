@@ -36,7 +36,7 @@ export default function Shop({ products }: { products: P[] }) {
   const input = "w-full rounded-2xl border border-chai-100 bg-white px-4 py-3 outline-none focus:border-chai-500 focus:ring-2 focus:ring-chai-400/30";
 
   return (
-    <div className="-mt-8 px-4">
+    <div className="relative z-10 -mt-8 mx-auto max-w-2xl px-4">
       <section id="menu" className="space-y-4">
         {products.map((p) => (
           <article key={p.id} className="rounded-3xl bg-white p-5 shadow-lg shadow-chai-500/10">
