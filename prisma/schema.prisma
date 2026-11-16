@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  tagline     String
+  price       Int
+  emoji       String
+  ingredients String[]
+  benefits    String[]
+  active      Boolean  @default(true)
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  customerName String
+  phone        String?
+  note         String?
+  total        Int
+  status       String      @default("MENUNGGU_PEMBAYARAN")
+  createdAt    DateTime    @default(now())
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name    String
+  price   Int
+  qty     Int
+}
