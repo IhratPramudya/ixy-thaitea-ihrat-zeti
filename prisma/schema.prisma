@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -20,15 +20,23 @@ model Product {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  code         String      @unique
-  customerName String
-  phone        String?
-  note         String?
-  total        Int
-  status       String      @default("MENUNGGU_PEMBAYARAN")
-  createdAt    DateTime    @default(now())
-  items        OrderItem[]
+  id            String      @id @default(cuid())
+  code          String      @unique
+  customerName  String
+  phone         String?
+  note          String?
+  total         Int
+  // kolom lama, tidak dipakai lagi (dibiarkan agar migrasi aman)
+  status        String      @default("MENUNGGU_PEMBAYARAN")
+  // MENUNGGU | LUNAS
+  paymentStatus String      @default("MENUNGGU")
+  // BARU | DIPROSES | SIAP | SELESAI | BATAL
+  prepStatus    String      @default("BARU")
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+
+  @@index([createdAt])
 }
 
 model OrderItem {

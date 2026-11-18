@@ -21,6 +21,9 @@ CREATE TABLE "Order" (
     "note" TEXT,
     "total" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'MENUNGGU_PEMBAYARAN',
+    "paymentStatus" TEXT NOT NULL DEFAULT 'MENUNGGU',
+    "prepStatus" TEXT NOT NULL DEFAULT 'BARU',
+    "paidAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
@@ -39,6 +42,9 @@ CREATE TABLE "OrderItem" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Order_code_key" ON "Order"("code");
+
+-- CreateIndex
+CREATE INDEX "Order_createdAt_idx" ON "Order"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
