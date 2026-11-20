@@ -23,10 +23,11 @@ model Order {
   id            String      @id @default(cuid())
   code          String      @unique
   customerName  String
+  // nomor WhatsApp format 628xxxxxxxxxx (identitas pelanggan)
   phone         String?
   note          String?
   total         Int
-  // kolom lama, tidak dipakai lagi (dibiarkan agar migrasi aman)
+  // kolom lama, tidak dipakai lagi
   status        String      @default("MENUNGGU_PEMBAYARAN")
   // MENUNGGU | LUNAS
   paymentStatus String      @default("MENUNGGU")
@@ -35,8 +36,10 @@ model Order {
   paidAt        DateTime?
   createdAt     DateTime    @default(now())
   items         OrderItem[]
+  payments      Payment[]
 
   @@index([createdAt])
+  @@index([phone])
 }
 
 model OrderItem {
@@ -46,4 +49,23 @@ model OrderItem {
   name    String
   price   Int
   qty     Int
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  midtransOrderId String    @unique
+  method          String    @default("QRIS")
+  amount          Int
+  // PENDING | PAID | EXPIRED | FAILED
+  status          String    @default("PENDING")
+  qrUrl           String?
+  qrString        String?
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([orderId])
 }
