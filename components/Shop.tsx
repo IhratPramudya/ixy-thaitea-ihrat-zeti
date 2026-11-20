@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { rupiah } from "@/lib/format";
+import { normalizePhone, PHONE_HINT } from "@/lib/phone";
 
 type P = { id: string; name: string; tagline: string; price: number; emoji: string; ingredients: string[]; benefits: string[] };
 
@@ -12,6 +13,32 @@ export default function Shop({ products }: { products: P[] }) {
   const [form, setForm] = useState({ customerName: "", phone: "", note: "" });
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Pulihkan keranjang dan data kontak yang tersimpan di perangkat ini
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ixy_cart");
+      if (raw) {
+        const saved = JSON.parse(raw) as Record<string, unknown>;
+        const valid: Record<string, number> = {};
+        for (const p of products) {
+          const q = Math.floor(Number(saved[p.id]));
+          if (q > 0) valid[p.id] = Math.min(20, q);
+        }
+        setQty(valid);
+      }
+      const name = localStorage.getItem("ixy_name") ?? "";
+      const phone = localStorage.getItem("ixy_phone") ?? "";
+      setForm((f) => ({ ...f, customerName: name, phone }));
+    } catch { /* penyimpanan tidak tersedia */ }
+    setReady(true);
+  }, [products]);
+
+  useEffect(() => {
+    if (!ready) return;
+    try { localStorage.setItem("ixy_cart", JSON.stringify(qty)); } catch { /* abaikan */ }
+  }, [qty, ready]);
 
   const items = products.filter((p) => (qty[p.id] ?? 0) > 0);
   const total = items.reduce((s, p) => s + p.price * qty[p.id], 0);
@@ -22,15 +49,27 @@ export default function Shop({ products }: { products: P[] }) {
     e.preventDefault();
     setErr("");
     if (!form.customerName.trim()) return setErr("Nama wajib diisi dulu ya.");
+    const phone = normalizePhone(form.phone);
+    if (!phone) return setErr(PHONE_HINT);
     if (!count) return setErr("Pilih minimal satu minuman.");
     setLoading(true);
-    const res = await fetch("/api/orders", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, items: items.map((p) => ({ productId: p.id, qty: qty[p.id] })) }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setLoading(false); return setErr(data.error ?? "Gagal membuat pesanan."); }
-    router.push(`/order/${data.id}`);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, phone, items: items.map((p) => ({ productId: p.id, qty: qty[p.id] })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setLoading(false); return setErr(data.error ?? "Gagal membuat pesanan."); }
+      try {
+        localStorage.setItem("ixy_name", form.customerName.trim());
+        localStorage.setItem("ixy_phone", phone);
+        localStorage.removeItem("ixy_cart");
+      } catch { /* abaikan */ }
+      router.push(`/order/${data.id}`);
+    } catch {
+      setLoading(false);
+      setErr("Koneksi bermasalah, coba lagi.");
+    }
   }
 
   const input = "w-full rounded-2xl border border-chai-100 bg-white px-4 py-3 outline-none focus:border-chai-500 focus:ring-2 focus:ring-chai-400/30";
@@ -72,7 +111,10 @@ export default function Shop({ products }: { products: P[] }) {
       <form onSubmit={submit} className="mt-6 space-y-3 rounded-3xl bg-white p-5 shadow-lg shadow-chai-500/10">
         <h2 className="text-lg font-bold">Data pemesan</h2>
         <input className={input} placeholder="Nama kamu *" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} />
-        <input className={input} placeholder="No. WhatsApp / divisi (opsional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <div>
+          <input className={input} type="tel" inputMode="tel" autoComplete="tel" placeholder="Nomor WhatsApp * (08123456789)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <p className="mt-1 px-1 text-xs text-chai-800/60">Dipakai sebagai kode untuk melihat riwayat pesanan dan pembayaranmu.</p>
+        </div>
         <textarea className={input} rows={2} placeholder="Catatan, misal: less sugar" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         {err && <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{err}</p>}
         <button disabled={loading} className="w-full rounded-2xl bg-gradient-to-r from-chai-500 to-chai-600 py-4 text-lg font-bold text-white shadow-lg shadow-chai-500/30 active:scale-[.98] disabled:opacity-60">
@@ -81,7 +123,7 @@ export default function Shop({ products }: { products: P[] }) {
       </form>
 
       {count > 0 && (
-        <div className="fixed inset-x-4 bottom-4 z-10 flex items-center justify-between rounded-full bg-chai-900 px-6 py-3 text-white shadow-2xl">
+        <div className="fixed inset-x-4 bottom-4 z-20 mx-auto flex max-w-md items-center justify-between rounded-full bg-chai-900 px-6 py-3 text-white shadow-2xl">
           <span>🛒 {count} minuman</span><span className="font-bold">{rupiah(total)}</span>
         </div>
       )}
